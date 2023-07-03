@@ -4,3 +4,5 @@ This repository contains code related to the language models used for the chatbo
 
 Current folder structure:
 
+## TODO:
+ - emotion mapping for the emotion lines dataset
