@@ -6,7 +6,7 @@ from datasets import Dataset
 
 
 logging.basicConfig(filename=os.path.splitext(
-    os.path.basename(__file__))[0], level=logging.INFO)
+    os.path.basename(__file__))[0]+'.log', level=logging.INFO)
 
 
 def jsonl_generator(shards):
