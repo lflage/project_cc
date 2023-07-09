@@ -13,11 +13,7 @@ def jsonl_generator(shards):
     for shard in shards:
         with open(shard) as json_obj:
             for line in json_obj.readlines():
-                a = json.loads(line)
-                for k, v in a.items():
-                    if type(v) == float:
-                        continue
-                yield a
+                yield json.loads(line)
 
 
 jsonl_paths = []
