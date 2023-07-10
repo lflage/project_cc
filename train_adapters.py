@@ -1,4 +1,6 @@
-from transformers import GPT2Tokenizer
+from transformers import AdapterTrainer, TrainingArguments
+from transformers import AutoModelForCausalLM, GPT2Tokenizer
+
 import os
 import json
 import logging
@@ -41,73 +43,98 @@ for root, dir, files in os.walk(path_to_processed):
     for file in files:
         jsonl_paths.append(os.path.join(root, file))
 
+
+# Dataset processing for training and trainig functions
+# Source:
+# https://colab.research.google.com/github/Adapter-Hub/adapter-transformers/blob/master/notebooks/06_Text_Generation.ipynb#scrollTo=ioLpFbOfnPE6
+# https://adapterhub.ml/blog/2021/04/adapters-for-generative-and-seq2seq-models-in-nlp/
+
+# Tokenize the entries in the dataset
+def encode_batch(batch):
+    """Encodes a batch of input data using the model tokenizer."""
+    encoding = tokenizer(batch["text"])
+    # For language modeling the labels need to be the input_ids
+    # encoding["labels"] = encoding["input_ids"]
+    return encoding
+
+
+# Main data processing function that will concatenate all texts from our dataset and generate chunks of block_size.
+def group_texts(examples):
+    # Concatenate all texts.
+    concatenated_examples = {k: sum(examples[k], []) for k in examples.keys()}
+    total_length = len(concatenated_examples[list(examples.keys())[0]])
+    # We drop the small remainder, we could add padding if the model supported it instead of this drop, you can
+    # customize this part to your needs.
+    total_length = (total_length // block_size) * block_size
+    # Split by chunks of max_len.
+    result = {
+        k: [t[i: i + block_size] for i in range(0, total_length, block_size)]
+        for k, t in concatenated_examples.items()
+    }
+    result["labels"] = result["input_ids"].copy()
+    return result
+
 # for line in jsonl_generator(jsonl_paths):
     # for k, v in line.items():
     #     if type(v) == float:
     #         logging.info('nan lines:\n{} : {}'.format(k, v))
 
+
 moody_dataset = Dataset.from_generator(
     jsonl_generator, gen_kwargs={'shards': jsonl_paths})
 
-moody_dataset = moody_dataset.train_test_split(test_size=0.2)
 
-# def gen(shards):
-#     for shard in shards:
-#         with open(shard) as f:
-#             for line in f:
-#                 yield {"line": line}
+cur_ds = moody_dataset.filter(
+    lambda example: example["EmotionTag"] == mood).train_test_split(test_size=0.2)
+
+del moody_dataset
 
 
-# shards = [f"data{i}.txt" for i in range(32)]
-
-# ds = Dataset.from_generator(gen, gen_kwargs={"shards": jsonl_paths})
-
-print(moody_dataset)
-
-# def encode_batch(batch):
-#   """Encodes a batch of input data using the model tokenizer."""
-#   encoding = tokenizer(batch["verse_text"])
-#   # For language modeling the labels need to be the input_ids
-#   #encoding["labels"] = encoding["input_ids"]
-#   return encoding
-
-# tokenizer = GPT2Tokenizer.from_pretrained("gpt2")
-# # The GPT-2 tokenizer does not have a padding token. In order to process the data
-# # in batches we set one here
-# tokenizer.pad_token = tokenizer.eos_token
-# column_names = dataset["train"].column_names
-# dataset = dataset.map(encode_batch, remove_columns=column_names, batched=True)
+tokenizer = GPT2Tokenizer.from_pretrained("gpt2")
+# The GPT-2 tokenizer does not have a padding token. In order to process the data
+# in batches we set one here
+tokenizer.pad_token = tokenizer.eos_token
+column_names = cur_ds["train"].column_names
+dataset = cur_ds.map(encode_batch, remove_columns=column_names, batched=True)
 
 
-# from transformers import AdapterTrainingConfig, AdapterTrainer
-# from transformers import GPT2LMHeadModel, GPT2Config, GPT2Tokenizer
+# reate chunks with a length of block_size.
+block_size = 50
+dataset = dataset.map(group_texts, batched=True,)
 
-# from adapter_transformers import AdapterType
+dataset.set_format(type="torch", columns=[
+                   "input_ids", "attention_mask", "labels"])
 
-# model_path = "path_to_your_fine_tuned_model"
-# model = GPT2LMHeadModel.from_pretrained(model_path)
+###############################################################
+
+# config = AutoConfig.from_json_file("./model/config.json")
+model = AutoModelForCausalLM.from_pretrained("./model/")
+# add new adapter
+model.add_adapter(mood)
+# activate adapter for training
+model.train_adapter(mood)
 
 
-# adapter_names = ["task1", "task2", "task3", "task4"]
+##############################################################
+training_args = TrainingArguments(
+    output_dir="./examples",
+    do_train=True,
+    remove_unused_columns=False,
+    learning_rate=5e-4,
+    num_train_epochs=3,
+)
 
-# for name in adapter_names:
-#     model.add_adapter(name, AdapterType.text_task)
 
+trainer = AdapterTrainer(
+    model=model,
+    args=training_args,
+    tokenizer=tokenizer,
+    train_dataset=dataset["train"],
+    eval_dataset=dataset["test"],
+)
+try:
+    trainer.train()
+except:
+    logging
 
-# task_datasets = {
-#     "task1": task1_dataset,
-#     "task2": task2_dataset,
-#     "task3": task3_dataset,
-#     "task4": task4_dataset,
-# }
-
-# training_args = AdapterTrainingConfig(
-#     num_train_epochs=10,
-#     learning_rate=1e-4,
-# )
-
-# for adapter_name, dataset in task_datasets.items():
-#     model.train_adapter(
-#         dataset=dataset, adapter_name=adapter_name, config=training_args)
-
-# model.save_pretrained("path_to_save_model")
+model.save_adapter("adapter_"+mood, mood)
