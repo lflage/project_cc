@@ -13,20 +13,20 @@ logging.basicConfig(filename=os.path.splitext(
 parser = argparse.ArgumentParser(
     description='tool for training adapters for project_cc')
 
-parser.add_argument('-path_to_processed', type=int,
+parser.add_argument('-path_to_processed', type=str,
                     default='./datasets/processed', help='path to processed dataset')
 parser.add_argument('-mood', type=str, choices=['happy', 'surprised', 'sad', 'angry', 'neutral'],
                     help="""list of possible moods. 
                     ACHTUNG: If you select more than one they'll be trained sequentially""")
-parser.add_argument('--out_path', type=str, default=os.path.dirname(__file__),
+parser.add_argument('--out_dir', type=str, default=os.path.dirname(__file__),
                     help='Path to output file ')
 
 
 args = parser.parse_args()
 
 path_to_processed = args.path_to_processed
-moods_list = args.mood
-out_path = args.out_path + " ".join(moods_list)
+mood = args.mood
+out_path = args.out_dir + (mood)
 
 
 def jsonl_generator(shards):
@@ -37,7 +37,7 @@ def jsonl_generator(shards):
 
 
 jsonl_paths = []
-for root, dir, files in os.walk('./datasets/processed'):
+for root, dir, files in os.walk(path_to_processed):
     for file in files:
         jsonl_paths.append(os.path.join(root, file))
 
