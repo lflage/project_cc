@@ -44,12 +44,22 @@ for root, dir, files in os.walk(path_to_processed):
         jsonl_paths.append(os.path.join(root, file))
 
 
+def add_special_tokens_(model, tokenizer):
+    """ Add special tokens to the tokenizer and the model if they have not already been added. """
+    orig_num_tokens = len(tokenizer.encoder)
+    num_added_tokens = tokenizer.add_special_tokens(
+        ATTR_TO_SPECIAL_TOKEN)  # doesn't add if they are already there
+    if num_added_tokens > 0:
+        model.resize_token_embeddings(
+            new_num_tokens=orig_num_tokens + num_added_tokens)
 # Dataset processing for training and trainig functions
 # Source:
 # https://colab.research.google.com/github/Adapter-Hub/adapter-transformers/blob/master/notebooks/06_Text_Generation.ipynb#scrollTo=ioLpFbOfnPE6
 # https://adapterhub.ml/blog/2021/04/adapters-for-generative-and-seq2seq-models-in-nlp/
 
 # Tokenize the entries in the dataset
+
+
 def encode_batch(batch):
     """Encodes a batch of input data using the model tokenizer."""
     # encoding = tokenizer(batch["text"], truncation=True, max_length=1024)
@@ -95,6 +105,12 @@ tokenizer = GPT2Tokenizer.from_pretrained("gpt2")
 # The GPT-2 tokenizer does not have a padding token. In order to process the data
 # in batches we set one here
 tokenizer.pad_token = tokenizer.eos_token
+
+SPECIAL_TOKENS = ["<bos>", "<eos>", "<speaker1>", "<speaker2>", "<pad>"]
+ATTR_TO_SPECIAL_TOKEN = {'bos_token': '<bos>', 'eos_token': '<eos>', 'pad_token': '<pad>',
+                         'additional_special_tokens': ['<speaker1>', '<speaker2>']}
+tokenizer.add_special_tokens(ATTR_TO_SPECIAL_TOKEN)
+
 print('set pad token')
 column_names = cur_ds["train"].column_names
 
@@ -115,6 +131,7 @@ print(len(dataset['test'][0]['input_ids']))
 
 # config = AutoConfig.from_json_file("./model/config.json")
 model = AutoModelForCausalLM.from_pretrained("gpt2")
+add_special_tokens_(model)
 # add new adapter
 model.add_adapter(mood)
 # activate adapter for training
