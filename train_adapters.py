@@ -52,6 +52,7 @@ for root, dir, files in os.walk(path_to_processed):
 # Tokenize the entries in the dataset
 def encode_batch(batch):
     """Encodes a batch of input data using the model tokenizer."""
+    # encoding = tokenizer(batch["text"], truncation=True, max_length=1024)
     encoding = tokenizer(batch["text"])
     # For language modeling the labels need to be the input_ids
     # encoding["labels"] = encoding["input_ids"]
@@ -89,26 +90,31 @@ cur_ds = moody_dataset.filter(
 
 del moody_dataset
 
-
+print('Loading pre_trained gpt2')
 tokenizer = GPT2Tokenizer.from_pretrained("gpt2")
 # The GPT-2 tokenizer does not have a padding token. In order to process the data
 # in batches we set one here
 tokenizer.pad_token = tokenizer.eos_token
+print('set pad token')
 column_names = cur_ds["train"].column_names
+
 dataset = cur_ds.map(encode_batch, remove_columns=column_names, batched=True)
 
 
 # reate chunks with a length of block_size.
+print('Creating chunks')
 block_size = 50
 dataset = dataset.map(group_texts, batched=True,)
 
 dataset.set_format(type="torch", columns=[
                    "input_ids", "attention_mask", "labels"])
 
+print(len(dataset['test'][0]['input_ids']))
 ###############################################################
 
+
 # config = AutoConfig.from_json_file("./model/config.json")
-model = AutoModelForCausalLM.from_pretrained("./model/")
+model = AutoModelForCausalLM.from_pretrained("gpt2")
 # add new adapter
 model.add_adapter(mood)
 # activate adapter for training
@@ -135,6 +141,7 @@ trainer = AdapterTrainer(
 try:
     trainer.train()
 except:
-    logging
+    # print("didn't train")
+    logging.WARNING('Did not train')
 
 model.save_adapter("adapter_"+mood, mood)
