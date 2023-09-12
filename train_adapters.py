@@ -6,7 +6,18 @@ import json
 import logging
 import argparse
 from datasets import Dataset
+from datasets import load_dataset
+import datasets
+import transformers
+print(datasets.__version__)
+print(transformers.__version__)
 
+import torch
+print(torch.cuda.is_available())
+print(torch.cuda.device_count())
+print(torch.cuda.current_device())
+print(torch.cuda.device(0))
+print(torch.cuda.get_device_name(0))
 
 logging.basicConfig(filename=os.path.splitext(
     os.path.basename(__file__))[0]+'.log', level=logging.INFO)
@@ -16,7 +27,7 @@ parser = argparse.ArgumentParser(
     description='tool for training adapters for project_cc')
 
 parser.add_argument('-path_to_processed', type=str,
-                    default='./datasets/processed', help='path to processed dataset')
+                    default='/netscratch/fonseca/project_cc/datasets/processed/emotions_ds.json', help='path to processed dataset')
 parser.add_argument('-mood', type=str, choices=['happy', 'surprised', 'sad', 'angry', 'neutral'],
                     help="""list of possible moods. 
                     ACHTUNG: If you select more than one they'll be trained sequentially""")
@@ -37,11 +48,15 @@ def jsonl_generator(shards):
             for line in json_obj.readlines():
                 yield json.loads(line)
 
+def emotions_generator():
+    with open(path_to_processed) as json_obj:
+        for line in json_obj.readlines():
+            yield json.loads(line)
 
-jsonl_paths = []
-for root, dir, files in os.walk(path_to_processed):
-    for file in files:
-        jsonl_paths.append(os.path.join(root, file))
+# jsonl_paths = []
+# for root, dir, files in os.walk(path_to_processed):
+#     for file in files:
+#         jsonl_paths.append(os.path.join(root, file))
 
 
 def add_special_tokens_(model, tokenizer):
@@ -92,13 +107,18 @@ def group_texts(examples):
     #     if type(v) == float:
     #         logging.info('nan lines:\n{} : {}'.format(k, v))
 
+print(path_to_processed)
+moody_dataset = Dataset.from_generator(emotions_generator)
+# moody_dataset = load_dataset('json',data_files=path_to_processed, split=['train','test'])
+# print(type(moody_dataset))
 
-moody_dataset = Dataset.from_generator(
-    jsonl_generator, gen_kwargs={'shards': jsonl_paths})
 
 
 cur_ds = moody_dataset.filter(
-    lambda example: example["EmotionTag"] == mood).train_test_split(test_size=0.2)
+    lambda example: example["EmotionTag"] == mood)
+print(cur_ds.column_names)
+
+cur_ds = cur_ds.train_test_split(test_size=0.2)
 
 del moody_dataset
 
@@ -133,7 +153,7 @@ print(len(dataset['test'][0]['input_ids']))
 
 
 # config = AutoConfig.from_json_file("./model/config.json")
-model = AutoModelForCausalLM.from_pretrained("./model")
+model = AutoModelForCausalLM.from_pretrained("/netscratch/fonseca/project_cc/model")
 a = model.config
 print(a)
 add_special_tokens_(model, tokenizer)
@@ -152,7 +172,7 @@ training_args = TrainingArguments(
     do_train=True,
     remove_unused_columns=False,
     learning_rate=5e-4,
-    num_train_epochs=3,
+    num_train_epochs=15,
 )
 
 
