@@ -2,6 +2,13 @@ from transformers import T5ForConditionalGeneration, T5TokenizerFast
 from transformers.adapters import T5AdapterModel
 from utils.utils import example_list, persona
 
+import logging
+from datetime import datetime
+
+logging.basicConfig(level=logging.INFO,
+ filename='./logs/conversation_logs/'+datetime.now().strftime("%d-%m-_%H:%M:%S"))
+
+
 persona = "<persona>: " + " ".join(persona)
 
 # Task tokens
@@ -13,7 +20,9 @@ tokenizer.add_tokens(persona_tokens)
 
 model = T5AdapterModel.from_pretrained('./persona_chat')
 
+print('loading adapter')
 model.load_adapter('./persona_chat')
+print('Activating adapter')
 model.set_active_adapters('persona_lm_head')
 
 
@@ -34,20 +43,30 @@ history = ' <history>: '
 #    print("\n-----------------------\nThis is an output sentence:{}\n----------\n".format(output_sentence))
 #    history += output_sentence
 
+n=0
 while True:
-    example = input(">>>> ")
+    logging.info("####### loop {} #####\n".format(n))
+    example = input("")
     # print('this is example: {}'.format(example))
     # 
     history += example
+    logging.info(">History: {}\n".format(history))
+
     text_input = persona + history
+    logging.info(">text_input: {}\n".format(text_input))
+
     #print('this is model input: {}'.format(text_input))
     #
     model_input = tokenizer(text_input, return_tensors="pt")
+    logging.info(">model_input: {}\n".format(model_input))
     #
-    outputs = model.generate(input_ids=model_input.input_ids)
+    outputs = model.generate(input_ids=model_input.input_ids,attention_mask=model_input.attention_mask)
+    logging.info(">out_puts: {}\n".format(outputs))
+
     output_sentence = tokenizer.decode(outputs[0], skip_special_tokens=True)
     #
-
+    logging.info(">output_sentence: {}\n".format(output_sentence))
     #print("\n-----------------------\nThis is an output sentence:{}\n----------\n".format(output_sentence))
     print(output_sentence)
     history += output_sentence
+    n+=1
