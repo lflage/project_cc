@@ -9,6 +9,20 @@ from itertools import chain
 
 from datasets import load_dataset
 
+
+### Logging bullshit
+
+
+from transformers.utils import logging
+from datetime import datetime
+import wandb
+
+logging.set_verbosity_info()
+logger = logging.get_logger("transformers")
+#logging.basicConfig(level=logging.INFO,
+# filename='./logs/training_logs/'+datetime.now().strftime("%d-%m-_%H:%M:%S"))
+
+
 def preprocess_function(examples):
     model_inputs = tokenizer(examples['text'], max_length=512, truncation=True)
 
@@ -52,12 +66,12 @@ tokenized_personaAI = personaAI.map(preprocess_function, batched=True)
 batch_size = 16
 args = Seq2SeqTrainingArguments(
     f"T5forPersonaChat",
-    learning_rate=2e-5,
+    learning_rate=2e-6,
     per_device_train_batch_size=batch_size,
     per_device_eval_batch_size=batch_size,
     weight_decay=0.01,
     save_total_limit=3,
-    num_train_epochs=100,
+    num_train_epochs=3,
     predict_with_generate=True,
     fp16=True
 )
@@ -74,5 +88,6 @@ trainer = Seq2SeqTrainer(
 )
 
 trainer.train()
+
 model.save_adapter("persona_chat", "persona_lm_head")
 model.save_pretrained("persona_chat", "model")
