@@ -60,12 +60,21 @@ while True:
     model_input = tokenizer(text_input, return_tensors="pt")
     logging.info(">model_input: {}\n".format(model_input))
     #
-    outputs = model.generate(input_ids=model_input.input_ids,attention_mask=model_input.attention_mask)
+
+    outputs = model.generate(input_ids=model_input.input_ids,
+                            attention_mask=model_input.attention_mask,
+                            max_new_tokens=40,
+                            do_sample=True,
+                            top_k=50,
+                            top_p=0.95
+                            )
     logging.info(">out_puts: {}\n".format(outputs))
 
     output_sentence = tokenizer.decode(outputs[0], skip_special_tokens=True)
     #
     logging.info(">output_sentence: {}\n".format(output_sentence))
+    #for i, beam_output in enumerate(outputs):
+    #    print("{}: {}".format(i, tokenizer.decode(beam_output, skip_special_tokens=True)))
     #print("\n-----------------------\nThis is an output sentence:{}\n----------\n".format(output_sentence))
     print(output_sentence)
     history += output_sentence
