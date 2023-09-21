@@ -33,9 +33,7 @@ def preprocess_function(examples):
     model_inputs["labels"] = labels["input_ids"]
     return model_inputs
 
-out_dir = "./persona_adapter"
-if not os.path.isdir(out_dir):
-    os.mkdir(out_dir)
+
 
 # load dataset
 
@@ -43,30 +41,47 @@ personaAI = load_dataset('json', data_files={'train':'./datasets/processed/perso
                                         'validation':"./datasets/processed/personaAI/valid.json"}
                         )
 
+parser = argparse.ArgumentParser(
+    description='tool for training adapters for project_cc')
+
+parser.add_argument('-path_to_processed', type=str,
+                    default='/netscratch/fonseca/project_cc/datasets/processed/personaAI/train.txt',
+                    help='path to processed dataset')
+parser.add_argument('-n', type=str, help="adapter name")
+parser.add_argument('-m',type=str, help="model type/name on adapters library")
+parser.add_argument('-lr',type=float, help="learning rate")
+parser.add_argument('-n_ep',type=int, help="nr epochs")
+
+args = parser.parse_args()
+
+path_to_processed = args.path_to_processed
+out_path = './adapters/' + args.n
+
+
 
 # Task tokens
-persona_tokens = ['<persona>','<history>']
+persona_tokens = ['<persona_chat>','<persona>','<history>']
 
 # Load pre-trained BERT tokenizer from HuggingFace
-tokenizer = T5TokenizerFast.from_pretrained('t5-small')
+tokenizer = T5TokenizerFast.from_pretrained(args.m)
 tokenizer.add_tokens(persona_tokens)
 
 # Load pre-trained model from HuggingFace Hub
-model = T5AdapterModel.from_pretrained('t5-small')
+model = T5AdapterModel.from_pretrained(args.m)
 model.resize_token_embeddings(len(tokenizer))
 
 # adding language modeling head and setting it to train
-model.add_seq2seq_lm_head('persona_lm_head',overwrite_ok=True)
-model.add_adapter('persona_lm_head')
-model.train_adapter('persona_lm_head')
+model.add_seq2seq_lm_head(args.n,overwrite_ok=True)
+model.add_adapter(args.n)
+model.train_adapter(args.n)
 
 # Pre processing and tokenizing the dataset
 tokenized_personaAI = personaAI.map(preprocess_function, batched=True)
 
 batch_size = 16
 args = Seq2SeqTrainingArguments(
-    f"T5forPersonaChat",
-    learning_rate=2e-6,
+    f"./models/T5-large-forPersonaChat",
+    learning_rate=args.lr,
     per_device_train_batch_size=batch_size,
     per_device_eval_batch_size=batch_size,
     weight_decay=0.01,
@@ -89,5 +104,5 @@ trainer = Seq2SeqTrainer(
 
 trainer.train()
 
-model.save_adapter("persona_chat", "persona_lm_head")
-model.save_pretrained("persona_chat", "model")
+model.save_adapter(output, args.n)
+model.save_pretrained(output, "model")
