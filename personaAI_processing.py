@@ -16,9 +16,15 @@ parser.add_argument('--out_dir', type=str, default= base_dir+"/datasets/processe
                     help='Path to output file ')
 parser.add_argument('--in_file', type=str,
                     default=base_dir+'/datasets/raw/personachat_self_original.json',
-                    help='Path to original dataset')                    
+                    help='Path to original dataset')
+parser.add_argument('--prefix', action='store_true',
+                    help='if passed, the task prefix is passed')                           
 
 args = parser.parse_args()
+
+prefix = ""
+if args.prefix:
+    prefix = "<persona_chat>"
 
 # %%
 
@@ -40,27 +46,27 @@ def persona_samples(file, split='train'):
 
 if args.task=='seq2seq':
     # %%
-    with open("./datasets/processed/personaAI/train.json", 'w') as f:
+    with open("./datasets/processed/personaAI/train_seq2seq.json", 'w') as f:
         for input_text, target in persona_samples(a,split='train'):
-            f.write(json.dumps({"text":input_text, "target":target} ))
+            f.write(f"{prefix} {input_text} <answer> {target}".strip())
             f.write("\n")
     # %%
-    with open("./datasets/processed/personaAI/valid.json", 'w') as f:
+    with open("./datasets/processed/personaAI/valid_seq2seq.json", 'w') as f:
         for input_text, target in persona_samples(a,split='valid'):
-            f.write(json.dumps({"text":input_text, "target":target} ))
+            f.write(f"{prefix} {input_text} <answer> {target}".strip())
             f.write("\n")
 
 
 if args.task=='clm':
     # %%
-    with open("./datasets/processed/personaAI/train.txt", 'w') as f:
+    with open("./datasets/processed/personaAI/train_clm.txt", 'w') as f:
         for input_text, target in persona_samples(a,split='train'):
             f.write(input_text + " <answer> " + target)
             f.write("\n")
     # %%
-    with open("./datasets/processed/personaAI/valid.txt", 'w') as f:
+    with open("./datasets/processed/personaAI/valid_clm.txt", 'w') as f:
         for input_text, target in persona_samples(a,split='valid'):
-            f.write(input_text + " <answer> " + target)
+            f.write(f"{prefix} {input_text} <answer> {target}".strip())
             f.write("\n")
 
 # # %%
