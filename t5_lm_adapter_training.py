@@ -1,4 +1,4 @@
-import os
+import os,argparse
 
 import torch
 from transformers import T5TokenizerFast, TrainingArguments, DataCollatorForLanguageModeling
@@ -40,6 +40,7 @@ def preprocess_function(examples):
 personaAI = load_dataset('json', data_files={'train':'./datasets/processed/personaAI/train.json',
                                         'validation':"./datasets/processed/personaAI/valid.json"}
                         )
+personaAI = personaAI.shuffle(seed=42)
 
 parser = argparse.ArgumentParser(
     description='tool for training adapters for project_cc')
@@ -79,8 +80,8 @@ model.train_adapter(args.n)
 tokenized_personaAI = personaAI.map(preprocess_function, batched=True)
 
 batch_size = 16
-args = Seq2SeqTrainingArguments(
-    f"./models/T5-large-forPersonaChat",
+tr_args = Seq2SeqTrainingArguments(
+    f"./models/{args.m}-forPersonaChat",
     learning_rate=args.lr,
     per_device_train_batch_size=batch_size,
     per_device_eval_batch_size=batch_size,
@@ -96,7 +97,7 @@ data_collator = DataCollatorForSeq2Seq(tokenizer, model=model)
 # Trainer
 trainer = Seq2SeqTrainer(
     model=model,
-    args=args,
+    args=tr_args,
     train_dataset=tokenized_personaAI['train'],
     tokenizer=tokenizer,
     data_collator=data_collator
