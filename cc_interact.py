@@ -2,8 +2,11 @@
 # load and activate adapters
 # create chatbot loop
 
-import HuggingFace as hg
 import torch
+from transformers.adapters import GPT2AdapterModel
+
+
+# This script is not finished, it was an attempt to load adapters into the pre-trained GPT2 model
 
 def sample_sequence(personality, history, tokenizer, model, args, current_output=None):
     special_tokens_ids = tokenizer.convert_tokens_to_ids(SPECIAL_TOKENS)
@@ -38,11 +41,7 @@ def sample_sequence(personality, history, tokenizer, model, args, current_output
     return current_output
 
 
-print(torch.cuda.is_available())
-print(torch.cuda.device_count())
-print(torch.cuda.current_device())
-print(torch.cuda.device(0))
-print(torch.cuda.get_device_name(0))
+
 
 def sample_sequence(personality, history, tokenizer, model, args, current_output=None):
     special_tokens_ids = tokenizer.convert_tokens_to_ids(SPECIAL_TOKENS)
@@ -87,12 +86,20 @@ ATTR_TO_SPECIAL_TOKEN = {'bos_token': '<bos>', 'eos_token': '<eos>', 'pad_token'
                          'additional_special_tokens': ['<speaker1>', '<speaker2>']}
 tokenizer.add_special_tokens(ATTR_TO_SPECIAL_TOKEN)
 
-# Load model
-model = AutoModelForCausalLM.from_pretrained("/netscratch/fonseca/project_cc/model")
-a = model.config
-print(a)
+#
+from transformers.adapters import GPT2AdapterModel
+model = GPT2AdapterModel.from_pretrained("/netscratch/fonseca/project_cc/model")
 add_special_tokens_(model, tokenizer)
-b = model.config
+
+adapter_name = model.load_adapter("/netscratch/fonseca/project_cc/adapters/adapter_angry", config='pfeiffer')
+model.set_active_adapters(adapter_name)
+
+# Load model
+# model = AutoModelForCausalLM.from_pretrained("/netscratch/fonseca/project_cc/model")
+# a = model.config
+# print(a)
+# add_special_tokens_(model, tokenizer)
+# b = model.config
 
 
 history = []
