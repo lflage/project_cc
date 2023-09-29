@@ -1,5 +1,6 @@
-from transformers import T5ForConditionalGeneration, T5TokenizerFast
+
 from transformers.adapters import T5AdapterModel
+from transformers import T5TokenizerFast
 from utils.utils import example_list, persona
 
 import logging
@@ -14,11 +15,14 @@ persona = "<persona>: " + " ".join(persona)
 # Task tokens
 persona_tokens = ['<persona_chat>','<persona>','<history>']
 
-# Load pre-trained BERT tokenizer from HuggingFace
+# Load pre-trained T5 tokenizer from HuggingFace
 tokenizer = T5TokenizerFast.from_pretrained('t5-small')
+# Resizing tokenizer
 tokenizer.add_tokens(persona_tokens)
 
+# Load pre-trained model
 model = T5AdapterModel.from_pretrained('t5-small')
+# resizing token embeddings
 model.resize_token_embeddings(len(tokenizer))
 
 print('loading adapter')
@@ -28,6 +32,7 @@ model.set_active_adapters('persona_chat_final')
 
 
 history = ' <history>: '
+# Commented out bellow is the test loop with exeample sentences
 #for example in example_list:
 #    print('this is example: {}'.format(example))
 #    # 
@@ -44,25 +49,24 @@ history = ' <history>: '
 #    print("\n-----------------------\nThis is an output sentence:{}\n----------\n".format(output_sentence))
 #    history += output_sentence
 
+
+# conversation Loop
 n=0
 print('start talking')
 while True:
     logging.info("####### loop {} #####\n".format(n))
     example = input(">>>")
-    # print('this is example: {}'.format(example))
+    
     example = example.split(">>>")[0]
-    #sprint(f">>> {example}")
+  
     history += example + " "
     logging.info(">History: {}\n".format(history))
 
     text_input = persona + history
     logging.info(">text_input: {}\n".format(text_input))
 
-    #print('this is model input: {}'.format(text_input))
-    #
     model_input = tokenizer(text_input, return_tensors="pt")
     logging.info(">model_input: {}\n".format(model_input))
-    #
 
     # outputs = model.generate(input_ids=model_input.input_ids,
     #                         attention_mask=model_input.attention_mask,
@@ -81,14 +85,12 @@ while True:
                         )
     
 
-    logging.info(">out_puts: {}\n".format(outputs))
+    logging.info(">outputs: {}\n".format(outputs))
 
     output_sentence = tokenizer.decode(outputs[0], skip_special_tokens=True)
-    #
     logging.info(">output_sentence: {}\n".format(output_sentence))
-    #for i, beam_output in enumerate(outputs):
-    #    print("{}: {}".format(i, tokenizer.decode(beam_output, skip_special_tokens=True)))
-    #print("\n-----------------------\nThis is an output sentence:{}\n----------\n".format(output_sentence))
+    
     print(output_sentence)
+
     history += output_sentence + " "
     n+=1
