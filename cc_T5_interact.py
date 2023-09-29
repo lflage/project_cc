@@ -12,18 +12,19 @@ logging.basicConfig(level=logging.INFO,
 persona = "<persona>: " + " ".join(persona)
 
 # Task tokens
-persona_tokens = ['<persona>','<history>']
+persona_tokens = ['<persona_chat>','<persona>','<history>']
 
 # Load pre-trained BERT tokenizer from HuggingFace
 tokenizer = T5TokenizerFast.from_pretrained('t5-small')
 tokenizer.add_tokens(persona_tokens)
 
-model = T5AdapterModel.from_pretrained('./persona_chat')
+model = T5AdapterModel.from_pretrained('t5-small')
+model.resize_token_embeddings(len(tokenizer))
 
 print('loading adapter')
-model.load_adapter('./persona_chat')
+model.load_adapter('./adapters/persona_chat_final')
 print('Activating adapter')
-model.set_active_adapters('persona_lm_head')
+model.set_active_adapters('persona_chat_final')
 
 
 history = ' <history>: '
@@ -44,12 +45,14 @@ history = ' <history>: '
 #    history += output_sentence
 
 n=0
+print('start talking')
 while True:
     logging.info("####### loop {} #####\n".format(n))
-    example = input("")
+    example = input(">>>")
     # print('this is example: {}'.format(example))
-    # 
-    history += example
+    example = example.split(">>>")[0]
+    #sprint(f">>> {example}")
+    history += example + " "
     logging.info(">History: {}\n".format(history))
 
     text_input = persona + history
@@ -61,13 +64,23 @@ while True:
     logging.info(">model_input: {}\n".format(model_input))
     #
 
+    # outputs = model.generate(input_ids=model_input.input_ids,
+    #                         attention_mask=model_input.attention_mask,
+    #                         max_new_tokens=40,
+    #                         do_sample=True,
+    #                         no_repeat_ngram_size=2,
+    #                         top_k=3,
+    #                         temperature=0.7
+    #                         )
     outputs = model.generate(input_ids=model_input.input_ids,
-                            attention_mask=model_input.attention_mask,
-                            max_new_tokens=40,
-                            do_sample=True,
-                            top_k=50,
-                            top_p=0.95
-                            )
+                        attention_mask=model_input.attention_mask,
+                        max_new_tokens=40,
+                        do_sample=True,
+                        top_k=15,
+                        temperature=0.96
+                        )
+    
+
     logging.info(">out_puts: {}\n".format(outputs))
 
     output_sentence = tokenizer.decode(outputs[0], skip_special_tokens=True)
@@ -77,5 +90,5 @@ while True:
     #    print("{}: {}".format(i, tokenizer.decode(beam_output, skip_special_tokens=True)))
     #print("\n-----------------------\nThis is an output sentence:{}\n----------\n".format(output_sentence))
     print(output_sentence)
-    history += output_sentence
+    history += output_sentence + " "
     n+=1
