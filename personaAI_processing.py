@@ -27,7 +27,6 @@ if args.prefix:
     prefix = "<persona_chat>"
 
 # %%
-
 with open(args.in_file,'r') as f:
     a = json.loads(f.read())
 
@@ -61,23 +60,10 @@ if args.task=='clm':
     # %%
     with open(f"./datasets/processed/personaAI/train_{args.task}_prefix{args.prefix}.json", 'w') as f:
         for input_text, target in persona_samples(a,split='train'):
-            f.write(input_text + " <answer> " + target)
+            f.write(f"{prefix} {input_text} <answer> {target}".strip())
             f.write("\n")
     # %%
     with open(f"./datasets/processed/personaAI/validation_{args.task}_prefix{args.prefix}.json", 'w') as f:
         for input_text, target in persona_samples(a,split='valid'):
             f.write(f"{prefix} {input_text} <answer> {target}".strip())
             f.write("\n")
-
-# # %%
-# from datasets import load_dataset
-# personaAI = load_dataset('json', data_files={'train':'./datasets/processed/personaAI/train.json',
-#                                         'validation':"./datasets/processed/personaAI/valid.json"}
-#                         )
-
-# # %%
-# print(len(personaAI['train']))
-# print(len(personaAI['validation']))
-
-
-
