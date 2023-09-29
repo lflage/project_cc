@@ -35,18 +35,13 @@ def preprocess_function(examples):
 
 
 
-# load dataset
 
-personaAI = load_dataset('json', data_files={'train':'./datasets/processed/personaAI/train.json',
-                                        'validation':"./datasets/processed/personaAI/valid.json"}
-                        )
-personaAI = personaAI.shuffle(seed=42)
 
 parser = argparse.ArgumentParser(
     description='tool for training adapters for project_cc')
 
 parser.add_argument('-path_to_processed', type=str,
-                    default='/netscratch/fonseca/project_cc/datasets/processed/personaAI/train.txt',
+                    default='/netscratch/fonseca/project_cc/datasets/processed/personaAI/',
                     help='path to processed dataset')
 parser.add_argument('-n', type=str, help="adapter name")
 parser.add_argument('-m',type=str, help="model type/name on adapters library")
@@ -58,7 +53,13 @@ args = parser.parse_args()
 path_to_processed = args.path_to_processed
 out_path = './adapters/' + args.n
 
+# load dataset
 
+personaAI = load_dataset('json', 
+data_files={"train":path_to_processed + "train_seq2seq_prefixTrue.json",
+            "validation":path_to_processed + "validation_seq2seq_prefixTrue.json"}
+                        )
+personaAI = personaAI.shuffle(seed=42)
 
 # Task tokens
 persona_tokens = ['<persona_chat>','<persona>','<history>']
@@ -81,7 +82,7 @@ tokenized_personaAI = personaAI.map(preprocess_function, batched=True)
 
 batch_size = 16
 tr_args = Seq2SeqTrainingArguments(
-    f"./models/{args.m}-forPersonaChat",
+    f"./models/{args.m}-{args.lr}=forPersonaChat",
     learning_rate=args.lr,
     per_device_train_batch_size=batch_size,
     per_device_eval_batch_size=batch_size,
@@ -105,5 +106,5 @@ trainer = Seq2SeqTrainer(
 
 trainer.train()
 
-model.save_adapter(output, args.n)
-model.save_pretrained(output, "model")
+model.save_adapter(out_path, args.n)
+model.save_pretrained(out_path, "model")
